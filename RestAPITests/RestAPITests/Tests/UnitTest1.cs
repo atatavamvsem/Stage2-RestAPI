@@ -5,143 +5,115 @@ using RestSharp;
 using RestSharp.Serialization.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
-
+using System.Configuration;
+using System.Reflection;
+using RestAPITests.Resources;
+using RestAPITests.Utilities;
 
 namespace Tests
 {
-    public class Tests
+    internal class ReasAPITests : BaseTest
     {
-        [SetUp]
-        public void Setup()
-        {
-        }
-
-
-        [Test]
-        public void Test1()
-        {
-            RestClient client = new RestClient("https://jsonplaceholder.typicode.com");
-            RestRequest request = new RestRequest("/posts", Method.GET);
-            
-            // act
-            IRestResponse response = client.Execute(request);
-            Console.WriteLine(response.IsSuccessful);
-            Console.WriteLine((int)response.StatusCode);
-            // assert
-            //Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-            Assert.That(response.ContentType, Is.EqualTo("application/json; charset=utf-8"));
-        }
 
         [Test]
         public void Test2()
         {
-            IRestClient client = new RestClient("https://jsonplaceholder.typicode.com");
-            IRestRequest request = new RestRequest("/posts", Method.GET);
-
-            
-            IRestResponse<List<Post>> response = client.Execute<List<Post>>(request);
-            Assert.AreEqual(200, (int)response.StatusCode);
-            Assert.IsTrue(response.ContentType.Contains("application/json"));
-
-            List<Post> posts = response.Data;
-
-            List<int> postsId = new List<int>();
-            foreach (Post post in posts)
-            {
-                postsId.Add(post.Id);
-            }
-            List<int> originalPostsId = new List<int>(postsId);
-            postsId.Sort();
-            Assert.AreEqual(originalPostsId, postsId);
-            //List<int> sortedPostsId = postsId.Sort();
-            //IRestResponse<List<Post>> posts = client.Get<List<Post>>(request);
-
-
-            /*Post posts =
-                new JsonDeserializer().
-                Deserialize<Post>(response);*/
-
-            // assert
-            //string s = response.ContentType.ToString();
-            //Assert.That(response.ContentType, Is.EqualTo("application/json"));
-        }
-
-        [TestCase("posts", "99", 200, 10, 99)]
-        [TestCase("posts", "150", 404, 0, 0)]
-        public void GetPostTest(string resource, string number, int expectedHttpStatusCode, int userId, int id)
-        {
-            IRestClient client = new RestClient("https://jsonplaceholder.typicode.com");
-            
-            IRestRequest request = new RestRequest($"{resource}/{number}", Method.GET);
-
-            IRestResponse<Post> response = client.Execute<Post>(request);
-            Post posts = response.Data;
-            Console.WriteLine(posts.UserId);
-
-            if (response.StatusCode == HttpStatusCode.OK)
-            {
-                // OK
-            }
-            else
-            {
-                // NOK
-            }
-        }
-
-        [TestCase("posts", 201, 1)]
-        public void PostPostTest(string resource, int expectedHttpStatusCode, int userId)
-        {
-            Post post = new Post();
-            post.Title = "dfd";
-            post.UserId = userId;
-
-            
-
-            IRestClient client = new RestClient("https://jsonplaceholder.typicode.com");
-
-            IRestRequest request = new RestRequest($"{resource}", Method.POST);
-
-            request.AddHeader("Content-type", "application/json; charset=UTF-8");
-
-            var jsons = JsonConvert.SerializeObject(post);
-            //string json = JsonSerializer.Serialize(post);
-
-            //string jsonData = "{ \"title\" : \"oo\",  \"body\" : \"bar\",  \"userId\" : 1  }";
-            //new { body = "fff", userId = 1, title = "sdsdds" }
-            request.AddJsonBody(jsons);
-
-            IRestResponse<Post> response = client.Execute<Post>(request);
-            Post posts = response.Data;
-            //Post posts =
-            //    new JsonDeserializer().
-            //    Deserialize<Post>(response);
-            Console.WriteLine(posts.Title);
-            Assert.AreEqual(expectedHttpStatusCode, (int)response.StatusCode);
-        }
-
-        [TestCase("users", 200)]
-        public void GetPostUser(string resource, int expectedHttpStatusCode)
-        {
-            IRestClient client = new RestClient("https://jsonplaceholder.typicode.com");
-
-            IRestRequest request = new RestRequest($"{resource}", Method.GET);
+            //step1
+            IRestClient client = new RestClient(Resources.URL);
+            IRestRequest request = new RestRequest(Resources.resourcePosts, Method.GET);
 
             IRestResponse response = client.Execute(request);
-            List<User> posts =
-                new JsonDeserializer().
-                Deserialize<List<User>>(response);
-            //User posts = response.Data;
-            Console.WriteLine(posts[1].Address.Geo.Lat);
 
-            if (response.StatusCode == HttpStatusCode.OK)
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.IsTrue(response.ContentType.Contains(Resources.formatResponse));
+
+            List<Post> listPosts = new JsonDeserializer().Deserialize<List<Post>>(response);
+            
+            Assert.IsTrue(Utils.CheckIdSorting(listPosts));
+
+            //step2
+            request = new RestRequest($"{Resources.resourcePosts}/{Resources.existPost}", Method.GET);
+
+            response = client.Execute(request);
+
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+            Post post = new JsonDeserializer().Deserialize<Post>(response);
+
+            Assert.Multiple(() =>
             {
-                // OK
-            }
-            else
+                Assert.AreEqual(Resources.existPostUserId, post.UserId);
+                Assert.AreEqual(Resources.existPostId, post.Id);
+                Assert.IsFalse(String.IsNullOrEmpty(post.Body));
+                Assert.IsFalse(String.IsNullOrEmpty(post.Title));
+            });
+
+            //step3
+            request = new RestRequest($"{Resources.resourcePosts}/{Resources.notExistPost}", Method.GET);
+            response = client.Execute(request);
+
+            Assert.Multiple(() =>
             {
-                // NOK
-            }
+                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+                Assert.AreEqual(response.Content, "{}");
+            });
+            //step 4
+            Post addedPost = new Post
+            {
+                Title = GenerateRandomInput.GenerateEnglishString(Resources.lengthString),
+                Body = GenerateRandomInput.GenerateEnglishString(Resources.lengthString),
+                UserId = Resources.addPostUserId
+            };
+
+            request = new RestRequest(Resources.resourcePosts, Method.POST);
+
+            //request.AddHeader("Content-type", "application/json; charset=UTF-8");
+            request.AddJsonBody(JsonConvert.SerializeObject(addedPost));
+
+            response = client.Execute(request);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+
+            Post returnedPost = new JsonDeserializer().Deserialize<Post>(response);
+
+            Assert.Multiple(() =>
+            {
+                Assert.AreEqual(addedPost.UserId, returnedPost.UserId);
+                Assert.AreEqual(addedPost.Body, returnedPost.Body);
+                Assert.AreEqual(addedPost.Title, returnedPost.Title);
+                Assert.IsTrue(returnedPost.Id > 0);
+            });
+
+            //step5
+            
+
+            request = new RestRequest(Resources.resourceUsers, Method.GET);
+
+            response = client.Execute(request);
+
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.IsTrue(response.ContentType.Contains(Resources.formatResponse));
+
+            //jsc
+            //string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), @"..\..\..\Resources\jsconfig1.json");
+            String jsonString = File.ReadAllText(@"..\..\..\Resources\jsconfig1.json");
+            User user = JsonConvert.DeserializeObject<User>(jsonString);
+
+            List<User> posts = new JsonDeserializer().Deserialize<List<User>>(response);
+
+            Assert.IsTrue(posts.Find(x => x.Id == 5).Equals(user));
+
+            //step6
+            request = new RestRequest($"{Resources.resourceUsers}/{Resources.existUser}", Method.GET);
+            response = client.Execute(request);
+
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            User userFive = new JsonDeserializer().Deserialize<User>(response);
+            Assert.IsTrue(userFive.Equals(user));
         }
+
+
+        
     }
 }

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.1500
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RestAPITests", "RestAPITests\RestAPITests.csproj", "{CA0BA465-6171-49F5-B0BF-F3CC06A148B2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RestAPITests", "RestAPITests\RestAPITests.csproj", "{CA0BA465-6171-49F5-B0BF-F3CC06A148B2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
