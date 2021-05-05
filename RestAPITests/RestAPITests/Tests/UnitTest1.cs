@@ -21,27 +21,27 @@ namespace Tests
         public void Test2()
         {
             //step1
-            IRestClient client = new RestClient(Resources.URL);
-            IRestRequest request = new RestRequest(Resources.resourcePosts, Method.GET);
+            CreateGetRequest(Resources.resourcePosts);
+            CreateResponse();
 
-            IRestResponse response = client.Execute(request);
+            Assert.That(GetStatusCode(), Is.EqualTo(HttpStatusCode.OK));
+            Assert.IsTrue(GetResponseContentType().Contains(Resources.formatResponse));
 
-            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-            Assert.IsTrue(response.ContentType.Contains(Resources.formatResponse));
 
-            List<Post> listPosts = new JsonDeserializer().Deserialize<List<Post>>(response);
-            
+            //List<Post> listPosts = new List<Post>();
+
+            List<Post> listPosts = Deserialize<List<Post>>();
+
             Assert.IsTrue(Utils.CheckIdSorting(listPosts));
 
             //step2
-            request = new RestRequest($"{Resources.resourcePosts}/{Resources.existPost}", Method.GET);
+            CreateGetRequest(Resources.resourcePosts, Resources.existPost);
+            CreateResponse();
 
-            response = client.Execute(request);
+            Assert.That(GetStatusCode(), Is.EqualTo(HttpStatusCode.OK));
 
-            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-
-            Post post = new JsonDeserializer().Deserialize<Post>(response);
-
+            //Post post = new Post();
+            Post post = Deserialize<Post>();
             Assert.Multiple(() =>
             {
                 Assert.AreEqual(Resources.existPostUserId, post.UserId);
@@ -51,13 +51,13 @@ namespace Tests
             });
 
             //step3
-            request = new RestRequest($"{Resources.resourcePosts}/{Resources.notExistPost}", Method.GET);
-            response = client.Execute(request);
+            CreateGetRequest(Resources.resourcePosts, Resources.notExistPost);
+            CreateResponse();
 
             Assert.Multiple(() =>
             {
-                Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
-                Assert.AreEqual(response.Content, "{}");
+                Assert.That(GetStatusCode(), Is.EqualTo(HttpStatusCode.NotFound));
+                Assert.AreEqual(GetResponseContent(), "{}");
             });
             //step 4
             Post addedPost = new Post
@@ -115,5 +115,5 @@ namespace Tests
 
 
         
-    }
+        }
 }
