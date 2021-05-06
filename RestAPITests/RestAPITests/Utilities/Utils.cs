@@ -1,7 +1,6 @@
-﻿using RestAPITests.DataEntities;
-using System;
+﻿using Newtonsoft.Json;
+using RestAPITests.DataEntities;
 using System.Collections.Generic;
-using System.Text;
 
 namespace RestAPITests.Utilities
 {
